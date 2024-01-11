@@ -1,0 +1,44 @@
+name: SecureChat Client 앱 이미지 빌드
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v*
+permissions:
+  contents: read
+  packages: write
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: securechat-client
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@4
+      - name: 노드18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: 의존성 클린 설치
+        run: npm ci
+      - name: 앱 빌드
+        run: npm run build
+      - name: 이미지 레지스트리 로그인
+        uses: docker/login-action@3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 메타 데이터 설정
+        id: meta
+        uses: docker/metadata-action@5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/securechat/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+      - name: 이미지 빌드 & 푸쉬
+        uses: docker/build-push-action@5
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.lables }}
